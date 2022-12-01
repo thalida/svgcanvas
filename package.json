@@ -11,14 +11,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/zenozeng/svgcanvas.git"
+    "url": "https://github.com/thalida/svgcanvas.git"
   },
   "keywords": [
     "canvas",
     "svg",
     "canvas2svg"
   ],
-  "author": "Zeno Zeng",
+  "author": "Zeno Zeng (Forked by Thalida Noel)",
   "license": "MIT",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^21.0.2",

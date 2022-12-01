@@ -349,6 +349,11 @@
             this.canvas = this;   ///point back to this instance!
             this.__document = options.document || document;
 
+
+            this.__rootMaskClass = "root_mask";
+            this.__rootGroupClass = "root_group";
+            this.__rootDefsClass = "root_defs";
+
             // allow passing in an existing context to wrap around
             // if a context is passed in, we know a canvas already exist
             if (options.ctx) {
@@ -375,24 +380,10 @@
 
             //defs tag
             this.__defs = this.__document.createElementNS("http://www.w3.org/2000/svg", "defs");
+            this.__defs.classList.add(this.__rootDefsClass);
             this.__root.appendChild(this.__defs);
 
-            const eraserMaskId = `eraser_mask_${Date.now()}`;
-            this.__mask = this.__document.createElementNS("http://www.w3.org/2000/svg", "mask");
-            this.__mask.setAttribute("id", eraserMaskId);
-            const maskRect = this.__document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            maskRect.setAttribute("x", 0);
-            maskRect.setAttribute("y", 0);
-            maskRect.setAttribute("width", this.width);
-            maskRect.setAttribute("height", this.height);
-            maskRect.setAttribute("fill", "white");
-            this.__mask.appendChild(maskRect);
-            this.__root.appendChild(this.__mask);
-
-            //also add a group child. the svg element can't use the transform attribute
-            this.__currentElement = this.__document.createElementNS("http://www.w3.org/2000/svg", "g");
-            this.__currentElement.setAttribute("mask", `url(#${eraserMaskId})`);
-            this.__root.appendChild(this.__currentElement);
+            this.__setupRootNodes();
 
             // init transformation matrix
             this.resetTransform();
@@ -412,6 +403,54 @@
                 return
             }
             console.debug(`svgcanvas#${this.__id}:`, ...data);
+        };
+
+
+        /**
+         * Setup root nodes
+         * @private
+         */
+        Context.prototype.__setupRootNodes = function () {
+            this.__rootMaskId = `root_mask_${Date.now()}`;
+            this.__rootGroupId = `root_group_${Date.now()}`;
+
+            this.__mask = this.__document.createElementNS("http://www.w3.org/2000/svg", "mask");
+            this.__mask.setAttribute("id", this.__rootMaskId);
+            this.__mask.classList.add(this.__rootMaskClass);
+            const maskRect = this.__document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            maskRect.setAttribute("x", 0);
+            maskRect.setAttribute("y", 0);
+            maskRect.setAttribute("width", this.width);
+            maskRect.setAttribute("height", this.height);
+            maskRect.setAttribute("fill", "white");
+            this.__mask.appendChild(maskRect);
+            this.__root.appendChild(this.__mask);
+
+            //also add a group child. the svg element can't use the transform attribute
+            this.__currentElement = this.__document.createElementNS("http://www.w3.org/2000/svg", "g");
+            this.__currentElement.setAttribute("mask", `url(#${this.__rootMaskId})`);
+            this.__currentElement.setAttribute("id", this.__rootGroupId);
+            this.__currentElement.classList.add(this.__rootGroupClass);
+            this.__root.appendChild(this.__currentElement);
+        };
+
+        /**
+         * Get svg root group
+         * @returns {Element}
+         * @private
+         */
+        Context.prototype.__getRootGroup = function () {
+            return this.__root.getElementById(this.__rootGroupId);
+        };
+
+
+        /**
+         * Get svg root mask
+         * @returns {Element}
+         * @private
+         */
+        Context.prototype.__getRootMask = function () {
+            return this.__root.getElementById(this.__rootMaskId);
         };
 
         /**
@@ -637,7 +676,7 @@
             this.__currentElementsToStyle = null;
             //Clearing canvas will make the poped group invalid, currentElement is set to the root group node.
             if (!this.__currentElement) {
-                this.__currentElement = this.__root.childNodes[1];
+                this.__currentElement = this.__getRootGroup();
             }
             var state = this.__styleStack.pop();
             this.__debug('restore style', state);
@@ -908,13 +947,6 @@
          * adds a rectangle element
          */
         Context.prototype.fillRect = function (x, y, width, height) {
-            let { a, b, c, d, e, f } = this.getTransform();
-            if (JSON.stringify([a, b, c, d, e, f]) === JSON.stringify([1, 0, 0, 1, 0, 0])) {
-                //clear entire canvas
-                if (x === 0 && y === 0 && width === this.width && height === this.height) {
-                    this.__clearCanvas();
-                }
-            }
             var rect, parent;
             rect = this.__createElement("rect", {
                 x: x,
@@ -958,10 +990,14 @@
          * 2. remove all the childNodes of the root g element
          */
         Context.prototype.__clearCanvas = function () {
-            var rootGroup = this.__root.childNodes[1];
+            var rootMask = this.__getRootMask();
+            this.__root.removeChild(rootMask);
+
+            var rootGroup = this.__getRootGroup();
             this.__root.removeChild(rootGroup);
-            this.__currentElement = this.__document.createElementNS("http://www.w3.org/2000/svg", "g");
-            this.__root.appendChild(this.__currentElement);
+
+            this.__setupRootNodes();
+
             //reset __groupStack as all the child group nodes are all removed.
             this.__groupStack = [];
         };
@@ -970,24 +1006,15 @@
          * "Clears" a canvas by just drawing a white rectangle in the current group.
          */
         Context.prototype.clearRect = function (x, y, width, height) {
-            let { a, b, c, d, e, f } = this.getTransform();
-            if (JSON.stringify([a, b, c, d, e, f]) === JSON.stringify([1, 0, 0, 1, 0, 0])) {
-                //clear entire canvas
-                if (x === 0 && y === 0 && width === this.width && height === this.height) {
-                    this.__clearCanvas();
-                    return;
-                }
-            }
-            var rect, parent = this.__closestGroupOrSvg();
-            rect = this.__createElement("rect", {
+            const rect = this.__createElement("rect", {
                 x: x,
                 y: y,
                 width: width,
                 height: height,
-                fill: "#FFFFFF"
+                fill: "#000"
             }, true);
             this.__applyTransformation(rect);
-            parent.appendChild(rect);
+            this.__mask.appendChild(rect);
         };
 
         /**
@@ -1288,13 +1315,13 @@
                 //also I'm currently ignoring dw, dh, sw, sh, sx, sy for a mock context.
                 svg = image.getSvg().cloneNode(true);
                 if (svg.childNodes && svg.childNodes.length > 1) {
-                    defs = svg.childNodes[0];
+                    defs = svg.querySelector("defs.root_defs");
                     while (defs.childNodes.length) {
                         id = defs.childNodes[0].getAttribute("id");
                         this.__ids[id] = id;
                         this.__defs.appendChild(defs.childNodes[0]);
                     }
-                    group = svg.childNodes[1];
+                    group = svg.querySelector("g.root_group");
                     if (group) {
                         this.__applyTransformation(group, matrix);
                         parent.appendChild(group);
@@ -1346,7 +1373,7 @@
                 pattern.appendChild(img);
                 this.__defs.appendChild(pattern);
             } else if (image instanceof Context) {
-                pattern.appendChild(image.__root.childNodes[1]);
+                pattern.appendChild(image.__getRootGroup());
                 this.__defs.appendChild(pattern);
             }
             return new CanvasPattern(pattern, this);

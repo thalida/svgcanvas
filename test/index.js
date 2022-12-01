@@ -3,12 +3,13 @@ import arc from './tests/arc'
 import arcTo from './tests/arcTo'
 import arcTo2 from './tests/arcTo2'
 import arcToScaled from './tests/arcToScaled'
+import clearRect from './tests/clearRect'
 import emptyArc from './tests/emptyArc'
 import ellipse from './tests/ellipse'
 import ellipse2 from './tests/ellipse2'
 import fillstyle from './tests/fillstyle'
 import globalAlpha from './tests/globalalpha'
-import globalCompositeOperation from './tests/globalcompositeoperation'
+import globalCompositeOperation from './tests/globalCompositeOperation'
 import gradient from './tests/gradient'
 import linecap from './tests/linecap'
 import linewidth from './tests/linewidth'
@@ -28,6 +29,7 @@ const tests = [
     arcTo,
     arcTo2,
     arcToScaled,
+    clearRect,
     emptyArc,
     ellipse,
     ellipse2,

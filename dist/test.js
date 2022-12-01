@@ -985,6 +985,7 @@
 
 
         /**
+         * @deprecated
          * Clear entire canvas:
          * 1. save current transforms
          * 2. remove all the childNodes of the root g element
@@ -1015,6 +1016,14 @@
             }, true);
             this.__applyTransformation(rect);
             this.__mask.appendChild(rect);
+
+            const newGroup = this.__createElement("g", {}, true);
+            this.__applyTransformation(newGroup);
+
+            newGroup.appendChild(this.__getRootMask());
+            newGroup.appendChild(this.__getRootGroup());
+            this.__root.appendChild(newGroup);
+            this.__setupRootNodes();
         };
 
         /**
@@ -1713,6 +1722,9 @@
 
 
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        ctx.fillStyle = '#F30';
+        ctx.fillRect(75, 75, 75, 75);
     }
 
     function emptyArc(ctx) {

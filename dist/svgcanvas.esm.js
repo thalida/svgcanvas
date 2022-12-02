@@ -349,6 +349,7 @@ var Context = (function () {
 
         this.__rootMaskClass = "root_mask";
         this.__rootGroupClass = "root_group";
+        this.__rootLayerClass = "root_layer";
         this.__rootDefsClass = "root_defs";
 
         // allow passing in an existing context to wrap around
@@ -381,6 +382,8 @@ var Context = (function () {
         this.__root.appendChild(this.__defs);
 
         this.__setupRootNodes();
+        this.__currentElement = this.__getRootGroup();
+        this.__setParent(this.__currentElement);
 
         // init transformation matrix
         this.resetTransform();
@@ -403,16 +406,28 @@ var Context = (function () {
     };
 
 
+    function getRandomInt(max) {
+        return Math.floor(Math.random() * max);
+    }
+
     /**
      * Setup root nodes
      * @private
      */
     Context.prototype.__setupRootNodes = function () {
-        this.__rootMaskId = `root_mask_${Date.now()}`;
-        this.__rootGroupId = `root_group_${Date.now()}`;
+        this.__rootMaskId = `root_mask_${Date.now()}_${getRandomInt(1000)}`;
+        this.__rootGroupId = `root_group_${Date.now()}_${getRandomInt(1000)}`;
+
+        this.__rootLayer = this.__document.createElementNS("http://www.w3.org/2000/svg", "g");
+        this.__rootLayer.classList.add(this.__rootLayerClass);
 
         this.__mask = this.__document.createElementNS("http://www.w3.org/2000/svg", "mask");
         this.__mask.setAttribute("id", this.__rootMaskId);
+        this.__mask.setAttribute("x", 0);
+        this.__mask.setAttribute("y", 0);
+        this.__mask.setAttribute("width", this.width);
+        this.__mask.setAttribute("height", this.height);
+        this.__mask.setAttribute("maskUnits", "userSpaceOnUse");
         this.__mask.classList.add(this.__rootMaskClass);
         const maskRect = this.__document.createElementNS("http://www.w3.org/2000/svg", "rect");
         maskRect.setAttribute("x", 0);
@@ -421,14 +436,16 @@ var Context = (function () {
         maskRect.setAttribute("height", this.height);
         maskRect.setAttribute("fill", "white");
         this.__mask.appendChild(maskRect);
-        this.__root.appendChild(this.__mask);
+        this.__rootLayer.appendChild(this.__mask);
 
         //also add a group child. the svg element can't use the transform attribute
-        this.__currentElement = this.__document.createElementNS("http://www.w3.org/2000/svg", "g");
-        this.__currentElement.setAttribute("mask", `url(#${this.__rootMaskId})`);
-        this.__currentElement.setAttribute("id", this.__rootGroupId);
-        this.__currentElement.classList.add(this.__rootGroupClass);
-        this.__root.appendChild(this.__currentElement);
+        this.__rootGroup = this.__document.createElementNS("http://www.w3.org/2000/svg", "g");
+        this.__rootGroup.setAttribute("mask", `url(#${this.__rootMaskId})`);
+        this.__rootGroup.setAttribute("id", this.__rootGroupId);
+        this.__rootGroup.classList.add(this.__rootGroupClass);
+        this.__rootLayer.appendChild(this.__rootGroup);
+
+        this.__root.appendChild(this.__rootLayer);
     };
 
     /**
@@ -651,10 +668,11 @@ var Context = (function () {
      */
     Context.prototype.save = function () {
         var group = this.__createElement("g");
-        var parent = this.__closestGroupOrSvg();
+        var parent = this.__getParent();
         this.__groupStack.push(parent);
         parent.appendChild(group);
         this.__currentElement = group;
+        this.__setParent(group);
         const style = this.__getStyleState();
 
         this.__debug('save style', style);
@@ -674,7 +692,14 @@ var Context = (function () {
         //Clearing canvas will make the poped group invalid, currentElement is set to the root group node.
         if (!this.__currentElement) {
             this.__currentElement = this.__getRootGroup();
+            this.__setParent(this.rootLayer);
         }
+        // this.__setParent(this.__currentElement.querySelector('g'));
+        // console.log(this.__currentElement)
+        // console.log(this.__currentElement.parentNode)
+        // console.log(this.__getRootGroup())
+        // console.log(this.__getParent())
+        // console.log('----')
         var state = this.__styleStack.pop();
         this.__debug('restore style', state);
         this.__applyStyleState(state);
@@ -695,14 +720,38 @@ var Context = (function () {
         this.__currentDefaultPath = "";
         this.__currentPosition = {};
 
-        path = this.__createElement("path", {}, true);
         if (this.globalCompositeOperation === 'destination-out') {
             parent = this.__mask;
+            path = this.__createElement("path", {}, true);
+            parent.appendChild(path);
+            this.__currentElement = path;
+
+            const newGroup = this.__createElement("g", {}, true);
+            this.__applyTransformation(newGroup);
+
+            const currLayer = this.__rootLayer;
+            // this.__rootLayer.remove();
+            this.__setupRootNodes();
+            this.__getRootGroup().appendChild(currLayer);
+            console.log(this.__getRootGroup());
+            this.__setParent(this.__getRootGroup());
+            // this.__setParent(this.__rootLayer);
+            // this.__groupStack = [];
+            // this.__root.appendChild(newGroup);
         } else {
-            parent = this.__closestGroupOrSvg();
+            parent = this.__getParent();
+            path = this.__createElement("path", {}, true);
+            parent.appendChild(path);
         }
-        parent.appendChild(path);
         this.__currentElement = path;
+    };
+
+    Context.prototype.__setParent = function (parent) {
+        this.__currentParent = parent;
+    };
+
+    Context.prototype.__getParent = function (parent) {
+        return this.__currentParent;
     };
 
     /**
@@ -951,7 +1000,7 @@ var Context = (function () {
             width: width,
             height: height
         }, true);
-        parent = this.__closestGroupOrSvg();
+        parent = this.__getParent();
         parent.appendChild(rect);
         this.__currentElement = rect;
         this.__applyTransformation(rect);
@@ -973,7 +1022,7 @@ var Context = (function () {
             width: width,
             height: height
         }, true);
-        parent = this.__closestGroupOrSvg();
+        parent = this.__getParent();
         parent.appendChild(rect);
         this.__currentElement = rect;
         this.__applyTransformation(rect);
@@ -995,6 +1044,8 @@ var Context = (function () {
         this.__root.removeChild(rootGroup);
 
         this.__setupRootNodes();
+        this.__currentElement = this.__getRootGroup();
+        this.__setParent(this.__currentElement);
 
         //reset __groupStack as all the child group nodes are all removed.
         this.__groupStack = [];
@@ -1021,6 +1072,8 @@ var Context = (function () {
         newGroup.appendChild(this.__getRootGroup());
         this.__root.appendChild(newGroup);
         this.__setupRootNodes();
+        this.__currentElement = this.__getRootGroup();
+        this.__setParent(this.__currentElement);
     };
 
     /**
@@ -1072,7 +1125,7 @@ var Context = (function () {
         el.setAttribute("style", 'font:' + this.font);
 
         var style = el.style, // CSSStyleDeclaration object
-            parent = this.__closestGroupOrSvg(),
+            parent = this.__getParent(),
             textElement = this.__createElement("text", {
                 "font-family": style.fontFamily,
                 "font-size": style.fontSize,
@@ -1314,7 +1367,7 @@ var Context = (function () {
             throw new Error("Invalid number of arguments passed to drawImage: " + arguments.length);
         }
 
-        parent = this.__closestGroupOrSvg();
+        parent = this.__getParent();
         const matrix = this.getTransform().translate(dx, dy);
         if (image instanceof Context) {
             //canvas2svg mock canvas context. In the future we may want to clone nodes instead.

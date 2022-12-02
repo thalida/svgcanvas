@@ -1050,13 +1050,11 @@ var Context = (function () {
         this.__applyTransformation(rect);
         this.__mask.appendChild(rect);
 
-        const newGroup = this.__createElement("g", {}, true);
-        this.__applyTransformation(newGroup);
+        const currLayer = this.__rootLayer;
 
-        newGroup.appendChild(this.__getRootMask());
-        newGroup.appendChild(this.__getRootGroup());
-        this.__root.appendChild(newGroup);
         this.__setupRootNodes();
+        this.__getRootGroup().appendChild(currLayer);
+
         this.__currentElement = this.__getRootGroup();
         this.__setParent(this.__currentElement);
     };

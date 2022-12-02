@@ -695,7 +695,9 @@
             //Clearing canvas will make the poped group invalid, currentElement is set to the root group node.
             if (!this.__currentElement) {
                 this.__currentElement = this.__getRootGroup();
-                this.__setParent(this.rootLayer);
+                this.__setParent(this.__getRootGroup());
+            } else {
+                this.__setParent(this.__getRootGroup());
             }
 
             var state = this.__styleStack.pop();

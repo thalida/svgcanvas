@@ -694,12 +694,7 @@ var Context = (function () {
             this.__currentElement = this.__getRootGroup();
             this.__setParent(this.rootLayer);
         }
-        // this.__setParent(this.__currentElement.querySelector('g'));
-        // console.log(this.__currentElement)
-        // console.log(this.__currentElement.parentNode)
-        // console.log(this.__getRootGroup())
-        // console.log(this.__getParent())
-        // console.log('----')
+
         var state = this.__styleStack.pop();
         this.__debug('restore style', state);
         this.__applyStyleState(state);
@@ -722,27 +717,17 @@ var Context = (function () {
 
         if (this.globalCompositeOperation === 'destination-out') {
             parent = this.__mask;
-            path = this.__createElement("path", {}, true);
-            parent.appendChild(path);
-            this.__currentElement = path;
-
-            const newGroup = this.__createElement("g", {}, true);
-            this.__applyTransformation(newGroup);
 
             const currLayer = this.__rootLayer;
-            // this.__rootLayer.remove();
             this.__setupRootNodes();
             this.__getRootGroup().appendChild(currLayer);
-            console.log(this.__getRootGroup());
             this.__setParent(this.__getRootGroup());
-            // this.__setParent(this.__rootLayer);
-            // this.__groupStack = [];
-            // this.__root.appendChild(newGroup);
         } else {
             parent = this.__getParent();
-            path = this.__createElement("path", {}, true);
-            parent.appendChild(path);
         }
+
+        path = this.__createElement("path", {}, true);
+        parent.appendChild(path);
         this.__currentElement = path;
     };
 

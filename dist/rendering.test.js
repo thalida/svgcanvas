@@ -720,11 +720,6 @@
 
             if (this.globalCompositeOperation === 'destination-out') {
                 parent = this.__mask;
-
-                const currLayer = this.__rootLayer;
-                this.__setupRootNodes();
-                this.__getRootGroup().appendChild(currLayer);
-                this.__setParent(this.__getRootGroup());
             } else {
                 parent = this.__getParent();
             }
@@ -732,6 +727,14 @@
             path = this.__createElement("path", {}, true);
             parent.appendChild(path);
             this.__currentElement = path;
+
+            if (this.globalCompositeOperation === 'destination-out') {
+                const currLayer = this.__rootLayer;
+                this.__rootLayer.remove();
+                this.__setupRootNodes();
+                this.__getRootGroup().appendChild(currLayer);
+                this.__setParent(this.__getRootGroup());
+            }
         };
 
         Context.prototype.__setParent = function (parent) {
@@ -1025,12 +1028,7 @@
          * 2. remove all the childNodes of the root g element
          */
         Context.prototype.__clearCanvas = function () {
-            var rootMask = this.__getRootMask();
-            this.__root.removeChild(rootMask);
-
-            var rootGroup = this.__getRootGroup();
-            this.__root.removeChild(rootGroup);
-
+            this.__rootLayer.remove();
             this.__setupRootNodes();
             this.__currentElement = this.__getRootGroup();
             this.__setParent(this.__currentElement);
@@ -1054,7 +1052,7 @@
             this.__mask.appendChild(rect);
 
             const currLayer = this.__rootLayer;
-
+            this.__rootLayer.remove();
             this.__setupRootNodes();
             this.__getRootGroup().appendChild(currLayer);
 

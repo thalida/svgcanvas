@@ -1022,7 +1022,6 @@
 
 
         /**
-         * @deprecated
          * Clear entire canvas:
          * 1. save current transforms
          * 2. remove all the childNodes of the root g element
@@ -1041,6 +1040,15 @@
          * "Clears" a canvas by just drawing a white rectangle in the current group.
          */
         Context.prototype.clearRect = function (x, y, width, height) {
+            let { a, b, c, d, e, f } = this.getTransform();
+            if (JSON.stringify([a, b, c, d, e, f]) === JSON.stringify([1, 0, 0, 1, 0, 0])) {
+                //clear entire canvas
+                if (x === 0 && y === 0 && width === this.width && height === this.height) {
+                    this.__clearCanvas();
+                    return;
+                }
+            }
+
             const rect = this.__createElement("rect", {
                 x: x,
                 y: y,

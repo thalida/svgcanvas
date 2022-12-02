@@ -13,4 +13,6 @@ export default function clearRect(ctx) {
 
     ctx.fillStyle = '#F30';
     ctx.fillRect(75, 75, 75, 75);
+
+    ctx.clearRect(0, 0, 125, 125);
 };
